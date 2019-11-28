@@ -1,3 +1,22 @@
+
+### 增加kudu110writer
+
+支持往Kudu中同步数据
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ![Datax-logo](https://github.com/alibaba/DataX/blob/master/images/DataX-logo.jpg)
 
 

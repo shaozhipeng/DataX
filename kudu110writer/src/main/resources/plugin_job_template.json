@@ -1,0 +1,9 @@
+{
+  "name": "kudu110writer",
+  "parameter": {
+    "table": "",
+    "column": [],
+    "master": "",
+    "primaryKey": []
+  }
+}

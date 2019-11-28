@@ -1,0 +1,6 @@
+{
+  "name": "kudu110writer",
+  "class": "com.alibaba.datax.plugin.writer.kudu110writer.KuduWriter",
+  "description": "useScene: prod. mechanism: via Data Storage connect Kudu write data concurrent.",
+  "developer": "shaozhipeng"
+}

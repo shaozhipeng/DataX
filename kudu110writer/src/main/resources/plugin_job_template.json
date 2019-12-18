@@ -3,7 +3,6 @@
   "parameter": {
     "table": "",
     "column": [],
-    "master": "",
-    "primaryKey": []
+    "master": ""
   }
 }

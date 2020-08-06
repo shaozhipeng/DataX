@@ -183,8 +183,9 @@ public class HbaseSQLWriterConfig {
                     "HBase的zookeeper.znode.parent配置不能为空，请联系HBase PE获取该信息.");
             }
 
+            // zk_quorum配置中包含端口号，比如 zoo1,zoo2,zoo3:12181
             // 生成sql使用的连接字符串， 格式： jdbc:phoenix:zk_quorum:2181:/znode_parent
-            cfg.connectionString = "jdbc:phoenix:" + zkQuorum + ":2181:" + znode;
+            cfg.connectionString = "jdbc:phoenix:" + zkQuorum + ":" + znode;
         }
     }
 

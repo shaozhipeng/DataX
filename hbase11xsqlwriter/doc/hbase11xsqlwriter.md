@@ -69,6 +69,10 @@ HBase11xsqlwriter实现了向hbase中的SQL表(phoenix)批量导入数据的功�
               "EVENTID",
               "CONTENT"
             ],
+            "phoenixConfig": {
+                "phoenix.schema.isNamespaceMappingEnabled": "true",
+                "phoenix.schema.mapSystemTablesToNamespace": "true"
+            },
             "hbaseConfig": {
               "hbase.zookeeper.quorum": "目标hbase集群的ZK服务器地址，向PE咨询",
               "zookeeper.znode.parent": "目标hbase集群的znode，向PE咨询"

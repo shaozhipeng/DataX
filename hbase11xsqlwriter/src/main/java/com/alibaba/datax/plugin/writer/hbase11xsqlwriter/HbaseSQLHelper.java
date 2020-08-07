@@ -17,12 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,12 +41,14 @@ public class HbaseSQLHelper {
      * 将hbase config字符串解析成zk quorum和znode。
      * 因为hbase使用的配置名称 xxx.xxxx.xxx会被{@link Configuration#from(String)}识别成json路径，
      * 而不是一个完整的配置项，所以，hbase的配置必须通过直接调用json API进行解析。
+     *
      * @param hbaseCfgString 配置中{@link Key#HBASE_CONFIG}的值
      * @return 返回2个string，第一个是zk quorum,第二个是znode
      */
     public static Pair<String, String> getHbaseConfig(String hbaseCfgString) {
         assert hbaseCfgString != null;
-        Map<String, String> hbaseConfigMap = JSON.parseObject(hbaseCfgString, new TypeReference<Map<String, String>>() {});
+        Map<String, String> hbaseConfigMap = JSON.parseObject(hbaseCfgString, new TypeReference<Map<String, String>>() {
+        });
         String zkQuorum = hbaseConfigMap.get(Key.HBASE_ZK_QUORUM);
         String znode = hbaseConfigMap.get(Key.HBASE_ZNODE_PARENT);
         if (znode == null || znode.isEmpty()) {
@@ -60,9 +57,35 @@ public class HbaseSQLHelper {
         return new Pair<String, String>(zkQuorum, znode);
     }
 
+    /**
+     * 解析phoenix config配置项
+     *
+     * @param phoenixCfgString 配置中{@link Key#PHOENIX_CONFIG}的值
+     * @return
+     */
+    public static Map<String, String> getPhoenixConfig(String phoenixCfgString) {
+        assert phoenixCfgString != null;
+
+        Map<String, String> phoenixConfigMap = JSON.parseObject(phoenixCfgString, new TypeReference<Map<String, String>>() {
+        });
+
+        if (phoenixConfigMap == null) {
+            phoenixConfigMap = new HashMap<>(0);
+        }
+
+        String isNamespaceMappingEnabled = phoenixConfigMap.get(Key.PHOENIX_SCHEMA_IS_NAMESPACE_MAPPING_ENABLED);
+        String mapSystemTablesToNamespace = phoenixConfigMap.get(Key.PHOENIX_SCHEMA_MAP_SYSTEM_TABLES_TO_NAMESPACE);
+
+        Map<String, String> configs = new HashMap<>(2);
+        configs.put(Key.PHOENIX_SCHEMA_IS_NAMESPACE_MAPPING_ENABLED, String.valueOf(Boolean.parseBoolean(isNamespaceMappingEnabled)));
+        configs.put(Key.PHOENIX_SCHEMA_MAP_SYSTEM_TABLES_TO_NAMESPACE, String.valueOf(Boolean.parseBoolean(mapSystemTablesToNamespace)));
+        return configs;
+    }
+
     public static Map<String, String> getThinConnectConfig(String hbaseCfgString) {
         assert hbaseCfgString != null;
-        return JSON.parseObject(hbaseCfgString, new TypeReference<Map<String, String>>() {});
+        return JSON.parseObject(hbaseCfgString, new TypeReference<Map<String, String>>() {
+        });
     }
 
     /**
@@ -125,6 +148,7 @@ public class HbaseSQLHelper {
 
     /**
      * 创建 thin client jdbc连接
+     *
      * @param cfg
      * @return
      * @throws SQLException
@@ -136,22 +160,23 @@ public class HbaseSQLHelper {
         String userNamespaceQuery = "use " + cfg.getNamespace();
         Statement statement = null;
         try {
-          statement = conn.createStatement();
-          statement.executeUpdate(userNamespaceQuery);
-          return conn;
+            statement = conn.createStatement();
+            statement.executeUpdate(userNamespaceQuery);
+            return conn;
         } catch (Exception e) {
-          throw DataXException.asDataXException(HbaseSQLWriterErrorCode.GET_HBASE_CONNECTION_ERROR,
-              "无法连接配置的namespace, 请检查配置 或者 联系 HBase 管理员.", e);
+            throw DataXException.asDataXException(HbaseSQLWriterErrorCode.GET_HBASE_CONNECTION_ERROR,
+                    "无法连接配置的namespace, 请检查配置 或者 联系 HBase 管理员.", e);
         } finally {
-          if (statement != null) {
-            statement.close();
-          }
+            if (statement != null) {
+                statement.close();
+            }
         }
     }
 
     /**
      * 获取一张表的元数据信息
-     * @param conn hbsae sql的jdbc连接
+     *
+     * @param conn          hbsae sql的jdbc连接
      * @param fullTableName 目标表的完整表名
      * @return 表的元数据
      */
@@ -164,7 +189,8 @@ public class HbaseSQLHelper {
     }
 
     /**
-     *  获取一张表的元数据信息
+     * 获取一张表的元数据信息
+     *
      * @param conn
      * @param namespace
      * @param fullTableName
@@ -173,8 +199,8 @@ public class HbaseSQLHelper {
      * @throws SQLException
      */
     public static PTable getTableSchema(Connection conn, String namespace, String fullTableName, boolean isThinClient)
-        throws
-        SQLException {
+            throws
+            SQLException {
         LOG.info("Start to get table schema of namespace=" + namespace + " , fullTableName=" + fullTableName);
         if (!isThinClient) {
             return getTableSchema(conn, fullTableName);
@@ -185,7 +211,7 @@ public class HbaseSQLHelper {
                     ThinClientPTable retTable = new ThinClientPTable();
                     retTable.setColTypeMap(parseColType(result));
                     ptable = retTable;
-                }finally {
+                } finally {
                     if (result != null) {
                         result.close();
                     }
@@ -198,18 +224,19 @@ public class HbaseSQLHelper {
 
     /**
      * 解析字段
+     *
      * @param rs
      * @return
      * @throws SQLException
      */
-    public static Map<String, ThinClientPTable.ThinClientPColumn>  parseColType(ResultSet rs) throws SQLException {
+    public static Map<String, ThinClientPTable.ThinClientPColumn> parseColType(ResultSet rs) throws SQLException {
         Map<String, ThinClientPTable.ThinClientPColumn> cols = new HashMap<String, ThinClientPTable
-            .ThinClientPColumn>();
+                .ThinClientPColumn>();
         ResultSetMetaData md = rs.getMetaData();
         int columnCount = md.getColumnCount();
 
         while (rs.next()) {
-            String colName  = null;
+            String colName = null;
             PDataType colType = null;
             for (int i = 1; i <= columnCount; i++) {
                 if (md.getColumnLabel(i).equals("TYPE_NAME")) {
@@ -256,6 +283,7 @@ public class HbaseSQLHelper {
 
     /**
      * 检查表
+     *
      * @param conn
      * @param namespace
      * @param tableName
@@ -263,7 +291,7 @@ public class HbaseSQLHelper {
      * @throws DataXException
      */
     public static void checkTable(Connection conn, String namespace, String tableName, boolean isThinClient)
-        throws DataXException {
+            throws DataXException {
         if (!isThinClient) {
             checkTable(conn, tableName);
         } else {
@@ -297,24 +325,25 @@ public class HbaseSQLHelper {
     }
 
     private static void checkTable(Admin admin, TableName tableName) throws IOException {
-        if(!admin.tableExists(tableName)){
+        if (!admin.tableExists(tableName)) {
             throw DataXException.asDataXException(HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
                     "HBase目的表" + tableName.toString() + "不存在, 请检查您的配置 或者 联系 Hbase 管理员.");
         }
-        if(!admin.isTableAvailable(tableName)){
+        if (!admin.isTableAvailable(tableName)) {
             throw DataXException.asDataXException(HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
                     "HBase目的表" + tableName.toString() + "不可用, 请检查您的配置 或者 联系 Hbase 管理员.");
         }
-        if(admin.isTableDisabled(tableName)){
+        if (admin.isTableDisabled(tableName)) {
             throw DataXException.asDataXException(HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
                     "HBase目的表" + tableName.toString() + "不可用, 请检查您的配置 或者 联系 Hbase 管理员.");
         }
     }
 
-    private static void closeAdmin(Admin admin){
+    private static void closeAdmin(Admin admin) {
         try {
-            if(null != admin)
+            if (null != admin) {
                 admin.close();
+            }
         } catch (IOException e) {
             throw DataXException.asDataXException(HbaseSQLWriterErrorCode.CLOSE_HBASE_AMIN_ERROR, e);
         }

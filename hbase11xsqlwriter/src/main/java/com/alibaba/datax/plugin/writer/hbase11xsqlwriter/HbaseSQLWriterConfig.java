@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * HBase SQL writer config
@@ -19,23 +20,46 @@ import java.util.Map;
  */
 public class HbaseSQLWriterConfig {
     private final static Logger LOG = LoggerFactory.getLogger(HbaseSQLWriterConfig.class);
-    private Configuration originalConfig;   // 原始的配置数据
+    /**
+     * 原始的配置数据
+     */
+    private Configuration originalConfig;
 
-    // 集群配置
+    /**
+     * 集群配置
+     */
     private String connectionString;
 
-    // 表配置
+    /**
+     * 表配置
+     */
     private String tableName;
-    private List<String> columns;           // 目的表的所有列的列名，包括主键和非主键，不包括时间列
+    /**
+     * 目的表的所有列的列名，包括主键和非主键，不包括时间列
+     */
+    private List<String> columns;
 
-    // 其他配置
+    /**
+     * 其他配置
+     */
     private NullModeType nullMode;
-    private int batchSize;                  // 一次批量写入多少行
-    private boolean truncate;               // 导入开始前是否要清空目的表
+    /**
+     * 一次批量写入多少行
+     */
+    private int batchSize;
+    /**
+     * 导入开始前是否要清空目的表
+     */
+    private boolean truncate;
     private boolean isThinClient;
     private String namespace;
     private String username;
     private String password;
+
+    /**
+     * Phoenix connect config
+     */
+    Properties phoenixProperties = new Properties();
 
     /**
      * @return 获取原始的datax配置
@@ -66,7 +90,6 @@ public class HbaseSQLWriterConfig {
     }
 
     /**
-     *
      * @return
      */
     public NullModeType getNullMode() {
@@ -103,6 +126,10 @@ public class HbaseSQLWriterConfig {
         return username;
     }
 
+    public Properties getPhoenixProperties() {
+        return phoenixProperties;
+    }
+
     /**
      * @param dataxCfg
      * @return
@@ -117,6 +144,9 @@ public class HbaseSQLWriterConfig {
 
         // 2. 解析列配置
         parseTableConfig(cfg, dataxCfg);
+
+        // 3. phoenix配置
+        parsePhoenixConfig(cfg, dataxCfg);
 
         // 3. 解析其他配置
         cfg.nullMode = NullModeType.getByTypeName(dataxCfg.getString(Key.NULL_MODE, Constant.DEFAULT_NULL_MODE));
@@ -149,14 +179,14 @@ public class HbaseSQLWriterConfig {
             cfg.password = thinConnectConfig.get(Key.HBASE_THIN_CONNECT_PASSWORD);
             if (Strings.isNullOrEmpty(thinConnectStr)) {
                 throw DataXException.asDataXException(
-                    HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
-                    "thinClient=true的轻客户端模式下HBase的hbase.thin.connect.url配置不能为空，请联系HBase PE获取该信息.");
+                        HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
+                        "thinClient=true的轻客户端模式下HBase的hbase.thin.connect.url配置不能为空，请联系HBase PE获取该信息.");
             }
             if (Strings.isNullOrEmpty(cfg.namespace) || Strings.isNullOrEmpty(cfg.username) || Strings
-                .isNullOrEmpty(cfg.password)) {
+                    .isNullOrEmpty(cfg.password)) {
                 throw DataXException.asDataXException(HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
-                    "thinClient=true的轻客户端模式下HBase的hbase.thin.connect.namespce|username|password配置不能为空，请联系HBase "
-                        + "PE获取该信息.");
+                        "thinClient=true的轻客户端模式下HBase的hbase.thin.connect.namespce|username|password配置不能为空，请联系HBase "
+                                + "PE获取该信息.");
             }
             cfg.connectionString = thinConnectStr;
         } else {
@@ -167,20 +197,20 @@ public class HbaseSQLWriterConfig {
             } catch (Throwable t) {
                 // 解析hbase配置错误
                 throw DataXException.asDataXException(
-                    HbaseSQLWriterErrorCode.REQUIRED_VALUE,
-                    "解析hbaseConfig出错，请确认您配置的hbaseConfig为合法的json数据格式，内容正确.");
+                        HbaseSQLWriterErrorCode.REQUIRED_VALUE,
+                        "解析hbaseConfig出错，请确认您配置的hbaseConfig为合法的json数据格式，内容正确.");
             }
             String zkQuorum = zkCfg.getFirst();
             String znode = zkCfg.getSecond();
             if (zkQuorum == null || zkQuorum.isEmpty()) {
                 throw DataXException.asDataXException(
-                    HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
-                    "HBase的hbase.zookeeper.quorum配置不能为空，请联系HBase PE获取该信息.");
+                        HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
+                        "HBase的hbase.zookeeper.quorum配置不能为空，请联系HBase PE获取该信息.");
             }
             if (znode == null || znode.isEmpty()) {
                 throw DataXException.asDataXException(
-                    HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
-                    "HBase的zookeeper.znode.parent配置不能为空，请联系HBase PE获取该信息.");
+                        HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
+                        "HBase的zookeeper.znode.parent配置不能为空，请联系HBase PE获取该信息.");
             }
 
             // zk_quorum配置中包含端口号，比如 zoo1,zoo2,zoo3:12181
@@ -210,6 +240,31 @@ public class HbaseSQLWriterConfig {
             throw DataXException.asDataXException(
                     HbaseSQLWriterErrorCode.ILLEGAL_VALUE, "HBase的columns配置不能为空,请添加目标表的列名配置.");
         }
+    }
+
+    private static void parsePhoenixConfig(HbaseSQLWriterConfig cfg, Configuration dataxCfg) {
+        // 获取phoenix配置信息字符串
+        String phoenixCfg = dataxCfg.getString(Key.PHOENIX_CONFIG);
+
+        Map<String, String> configs = null;
+        try {
+            configs = HbaseSQLHelper.getPhoenixConfig(phoenixCfg);
+        } catch (Throwable t) {
+            // 解析phoenix配置错误
+            throw DataXException.asDataXException(
+                    HbaseSQLWriterErrorCode.ILLEGAL_VALUE,
+                    "解析phoenixConfig出错，请确认您配置的phoenixConfig为合法的json数据格式，内容正确.");
+        }
+
+        // 设置Phoenix连接配置项
+        Properties prop = new Properties();
+
+        prop.setProperty(Key.PHOENIX_SCHEMA_IS_NAMESPACE_MAPPING_ENABLED,
+                configs.get(Key.PHOENIX_SCHEMA_IS_NAMESPACE_MAPPING_ENABLED));
+        prop.setProperty(Key.PHOENIX_SCHEMA_MAP_SYSTEM_TABLES_TO_NAMESPACE,
+                configs.get(Key.PHOENIX_SCHEMA_MAP_SYSTEM_TABLES_TO_NAMESPACE));
+
+        cfg.phoenixProperties = prop;
     }
 
     @Override

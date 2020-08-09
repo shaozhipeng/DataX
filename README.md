@@ -4,20 +4,13 @@
 支持往Kudu中同步数据
 
 
+###  修改hbase11xsqlwriter
+
+修复phoenix写入数据报错配置的问题
 
 
 
 
-
-
-
-
-
-
-
-
-
-![Datax-logo](https://github.com/alibaba/DataX/blob/master/images/DataX-logo.jpg)
 
 
 

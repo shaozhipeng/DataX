@@ -135,7 +135,7 @@ public class HbaseSQLHelper {
             if (cfg.isThinClient()) {
                 conn = getThinClientJdbcConnection(cfg);
             } else {
-                conn = DriverManager.getConnection(connStr);
+                conn = DriverManager.getConnection(connStr, cfg.getPhoenixProperties());
             }
             conn.setAutoCommit(false);
         } catch (Throwable e) {
